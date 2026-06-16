@@ -63,25 +63,25 @@ function buildArgs(outputPath) {
 const app = express();
 app.use(express.json());
 
-// İsteğe bağlı API anahtarı doğrulama
-app.use((req, res, next) => {
+// ---------------------------------------------------------------------------
+// GET /health  (auth yok — Docker health check için)
+// ---------------------------------------------------------------------------
+app.get("/health", (_req, res) => res.json({ status: "ok" }));
+
+// İsteğe bağlı API anahtarı doğrulama (yalnızca /download)
+function requireApiKey(req, res, next) {
   if (!API_KEY) return next();
   const provided = req.headers["x-api-key"] ?? req.query.apiKey;
   if (provided !== API_KEY) return res.status(401).json({ error: "Yetkisiz istek." });
   next();
-});
-
-// ---------------------------------------------------------------------------
-// GET /health
-// ---------------------------------------------------------------------------
-app.get("/health", (_req, res) => res.json({ status: "ok" }));
+}
 
 // ---------------------------------------------------------------------------
 // POST /download
 // Body: { "url": "<clipboard metni veya direkt link>" }
 // Yanıt: video/mp4 binary stream
 // ---------------------------------------------------------------------------
-app.post("/download", async (req, res) => {
+app.post("/download", requireApiKey, async (req, res) => {
   let { url } = req.body ?? {};
   if (!url || typeof url !== "string") {
     return res.status(400).json({ error: "url alanı zorunlu." });
