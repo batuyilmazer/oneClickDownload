@@ -12,9 +12,10 @@ const YTDlpWrap = YTDlpWrapModule.default ?? YTDlpWrapModule;
 // Yapılandırma
 // ---------------------------------------------------------------------------
 const PORT = process.env.PORT || 3000;
-const API_KEY = process.env.API_KEY || "";           // boş bırakılırsa auth yok
+const API_KEY = process.env.API_KEY || "";
 const TMP_DIR = join(tmpdir(), "oneclickdownload");
-const YTDLP_BINARY = process.env.YTDLP_BINARY || "yt-dlp"; // PATH'te olmalı
+const YTDLP_BINARY = process.env.YTDLP_BINARY || "yt-dlp";
+const COOKIES_FILE = process.env.COOKIES_FILE || "";
 
 mkdirSync(TMP_DIR, { recursive: true });
 
@@ -40,18 +41,20 @@ function extractURL(text) {
 // yt-dlp seçenekleri
 // ---------------------------------------------------------------------------
 function buildArgs(outputPath) {
-  return [
-    // mp4 kapsayıcı, 1080p'ye kadar en iyi kalite
+  const args = [
     "-f", "bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4]/best",
     "--merge-output-format", "mp4",
     "-o", outputPath,
     "--quiet",
     "--no-warnings",
-    // iOS Safari User-Agent: Twitter/Instagram için zaman zaman gerekli
     "--add-header",
     "User-Agent:Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
     "--socket-timeout", "30",
   ];
+  if (COOKIES_FILE && existsSync(COOKIES_FILE)) {
+    args.push("--cookies", COOKIES_FILE);
+  }
+  return args;
 }
 
 // ---------------------------------------------------------------------------

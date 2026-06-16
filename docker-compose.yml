@@ -6,6 +6,7 @@ services:
     env_file: .env
     volumes:
       - /tmp/oneclickdownload:/tmp/oneclickdownload
+      - ${COOKIES_FILE:-/dev/null}:/app/cookies.txt:ro
     networks:
       - proxy
     labels:
