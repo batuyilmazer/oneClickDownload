@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 3000;
 const API_KEY = process.env.API_KEY || "";
 const TMP_DIR = join(tmpdir(), "oneclickdownload");
 const YTDLP_BINARY = process.env.YTDLP_BINARY || "yt-dlp";
-const COOKIES_FILE = process.env.COOKIES_FILE || "";
+const COOKIES_FILE = process.env.COOKIES_FILE || "/app/cookies.txt";
 
 mkdirSync(TMP_DIR, { recursive: true });
 
