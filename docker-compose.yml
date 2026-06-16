@@ -5,19 +5,20 @@ services:
     restart: unless-stopped
     env_file: .env
     volumes:
-      # yt-dlp büyük videolarda disk kullanır; host'a bağla (isteğe bağlı)
       - /tmp/oneclickdownload:/tmp/oneclickdownload
     networks:
-      - traefik-public
+      - proxy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.oneclickdownload.rule=Host(`${DOMAIN}`)"
-      - "traefik.http.routers.oneclickdownload.entrypoints=websecure"
-      - "traefik.http.routers.oneclickdownload.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.oneclickdownload-http.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.oneclickdownload-http.entrypoints=http"
+      - "traefik.http.routers.oneclickdownload-http.middlewares=redirect-to-https@file"
+      - "traefik.http.routers.oneclickdownload-https.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.oneclickdownload-https.entrypoints=https"
+      - "traefik.http.routers.oneclickdownload-https.tls=true"
+      - "traefik.http.routers.oneclickdownload-https.tls.certresolver=letsencrypt"
       - "traefik.http.services.oneclickdownload.loadbalancer.server.port=3000"
-      # İndirme uzun sürebilir; timeout'u 5 dakikaya çek
-      - "traefik.http.middlewares.oneclickdownload-timeout.headers.customrequestheaders.X-Timeout=300"
 
 networks:
-  traefik-public:
+  proxy:
     external: true

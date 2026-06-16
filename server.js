@@ -5,7 +5,8 @@ import { existsSync, createReadStream, unlink } from "fs";
 import { mkdirSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
-import YTDlpWrap from "yt-dlp-wrap";
+import YTDlpWrapModule from "yt-dlp-wrap";
+const YTDlpWrap = YTDlpWrapModule.default ?? YTDlpWrapModule;
 
 // ---------------------------------------------------------------------------
 // Yapılandırma

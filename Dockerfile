@@ -4,11 +4,8 @@ FROM node:22-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     python3 \
-    curl \
-  && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
-       -o /usr/local/bin/yt-dlp \
-  && chmod +x /usr/local/bin/yt-dlp \
-  && apt-get purge -y curl \
+    python3-pip \
+  && pip3 install --break-system-packages yt-dlp \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
