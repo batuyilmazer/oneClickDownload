@@ -45,6 +45,8 @@ function buildArgs(outputPath) {
     "--quiet",
     "--no-warnings",
     "--socket-timeout", "30",
+    "--username", "oauth2",
+    "--password", "",
   ];
 }
 
