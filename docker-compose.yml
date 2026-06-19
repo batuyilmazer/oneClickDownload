@@ -25,7 +25,7 @@ services:
       - "traefik.http.services.oneclickdownload.loadbalancer.server.port=3000"
 
   bgutil:
-    image: ghcr.io/brainicism/bgutil-ytdlp-pot-provider:latest
+    image: brainicism/bgutil-ytdlp-pot-provider:latest
     restart: unless-stopped
     networks:
       - internal
