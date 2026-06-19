@@ -45,8 +45,6 @@ function buildArgs(outputPath) {
     "--quiet",
     "--no-warnings",
     "--socket-timeout", "30",
-    // YouTube bot tespitini cookie olmadan bypass etmek için Android + iOS client kullan
-    "--extractor-args", "youtube:player_client=android,ios,web",
   ];
 }
 
@@ -96,17 +94,19 @@ app.get("/auth/youtube", requireApiKey, (req, res) => {
   const parse = (chunk) => {
     buf += chunk.toString();
     if (!codeSent) {
-      // Plugin çıktısı: "go to  <url>  and enter code  <code>"
       const urlMatch = buf.match(/go to\s+(https?:\/\/\S+)\s+and enter/);
       const codeMatch = buf.match(/enter code\s+(\S+)/);
       if (urlMatch && codeMatch) {
         codeSent = true;
-        send("code", {
-          verification_url: urlMatch[1],
-          user_code: codeMatch[1],
-        });
+        send("code", { verification_url: urlMatch[1], user_code: codeMatch[1] });
         buf = "";
       }
+    }
+    // Token kaydedildi — test indirmesi başarılı olsun ya da olmasın işimiz bitti
+    if (buf.includes("Authorization successful")) {
+      send("complete", { message: "OAuth tamamlandı, token kaydedildi." });
+      proc.kill();
+      res.end();
     }
   };
 
@@ -114,6 +114,7 @@ app.get("/auth/youtube", requireApiKey, (req, res) => {
   proc.stderr.on("data", parse);
 
   proc.on("close", (code) => {
+    if (res.writableEnded) return;
     if (code === 0) {
       send("complete", { message: codeSent ? "OAuth tamamlandı, token kaydedildi." : "Token zaten geçerli." });
     } else {
