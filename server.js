@@ -15,7 +15,6 @@ const PORT = process.env.PORT || 3000;
 const API_KEY = process.env.API_KEY || "";
 const TMP_DIR = join(tmpdir(), "oneclickdownload");
 const YTDLP_BINARY = process.env.YTDLP_BINARY || "yt-dlp";
-const COOKIES_FILE = process.env.COOKIES_FILE || "/app/cookies.txt";
 
 mkdirSync(TMP_DIR, { recursive: true });
 
@@ -41,20 +40,16 @@ function extractURL(text) {
 // yt-dlp seçenekleri
 // ---------------------------------------------------------------------------
 function buildArgs(outputPath) {
-  const args = [
-    "-f", "bestvideo[height<=1080]+bestaudio/bestvideo+bestaudio/best",
+  return [
+    "-f", "bestvideo[height<=1080]+bestaudio/bestvideo[height<=1080]/bestvideo+bestaudio/best",
     "--merge-output-format", "mp4",
     "-o", outputPath,
     "--quiet",
     "--no-warnings",
-    "--add-header",
-    "User-Agent:Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
     "--socket-timeout", "30",
+    // YouTube bot tespitini cookie olmadan bypass etmek için Android + iOS client kullan
+    "--extractor-args", "youtube:player_client=android,ios,web",
   ];
-  if (COOKIES_FILE && existsSync(COOKIES_FILE)) {
-    args.push("--cookies", COOKIES_FILE);
-  }
-  return args;
 }
 
 // ---------------------------------------------------------------------------
