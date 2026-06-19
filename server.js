@@ -47,6 +47,7 @@ function buildArgs(outputPath) {
     "--socket-timeout", "30",
     "--username", "oauth2",
     "--password", "",
+    "--extractor-args", "youtube:player_client=tv",
   ];
 }
 
