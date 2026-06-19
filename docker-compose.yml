@@ -6,6 +6,7 @@ services:
     env_file: .env
     volumes:
       - /tmp/oneclickdownload:/tmp/oneclickdownload
+      - yt_dlp_cache:/root/.cache/yt-dlp
     networks:
       - proxy
     labels:
@@ -22,3 +23,6 @@ services:
 networks:
   proxy:
     external: true
+
+volumes:
+  yt_dlp_cache:

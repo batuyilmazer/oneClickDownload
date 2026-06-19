@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import { randomUUID } from "crypto";
 import { existsSync, createReadStream, unlink } from "fs";
+import { spawn } from "child_process";
 import { mkdirSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
@@ -70,6 +71,61 @@ function requireApiKey(req, res, next) {
   if (provided !== API_KEY) return res.status(401).json({ error: "Yetkisiz istek." });
   next();
 }
+
+// ---------------------------------------------------------------------------
+// GET /auth/youtube  — tek seferlik OAuth2 akışı (SSE stream)
+// Cihaz kodunu döndürür; kullanıcı https://google.com/device adresine gidip
+// kodu girdikten sonra token /root/.cache/yt-dlp altına kaydedilir ve
+// tüm sonraki indirmelerde otomatik kullanılır.
+// ---------------------------------------------------------------------------
+app.get("/auth/youtube", requireApiKey, (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+
+  const send = (type, payload = {}) =>
+    res.write(`data: ${JSON.stringify({ type, ...payload })}\n\n`);
+
+  const proc = spawn(YTDLP_BINARY, [
+    "--username", "oauth2",
+    "--password", "",
+    "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  ]);
+
+  let buf = "";
+  let codeSent = false;
+
+  const parse = (chunk) => {
+    buf += chunk.toString();
+    if (!codeSent) {
+      const urlMatch = buf.match(/https:\/\/www\.google\.com\/device/);
+      const codeMatch = buf.match(/code\s+([A-Z0-9]{4}-[A-Z0-9]{4})/);
+      if (urlMatch && codeMatch) {
+        codeSent = true;
+        send("code", {
+          verification_url: "https://www.google.com/device",
+          user_code: codeMatch[1],
+        });
+        buf = "";
+      }
+    }
+  };
+
+  proc.stdout.on("data", parse);
+  proc.stderr.on("data", parse);
+
+  proc.on("close", (code) => {
+    if (code === 0) {
+      send("complete", { message: codeSent ? "OAuth tamamlandı, token kaydedildi." : "Token zaten geçerli." });
+    } else {
+      send("error", { message: `yt-dlp çıkış kodu: ${code}`, details: buf.trim() });
+    }
+    res.end();
+  });
+
+  req.on("close", () => { if (!proc.killed) proc.kill(); });
+});
 
 // ---------------------------------------------------------------------------
 // POST /download
