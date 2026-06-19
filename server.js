@@ -87,11 +87,13 @@ app.get("/auth/youtube", requireApiKey, (req, res) => {
   const proc = spawn(YTDLP_BINARY, [
     "--username", "oauth2",
     "--password", "",
+    "--simulate",   // indirme yapma — sadece auth akışını tamamla
     "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
   ]);
 
   let buf = "";
   let codeSent = false;
+  let authDone = false;
 
   const parse = (chunk) => {
     buf += chunk.toString();
@@ -101,26 +103,22 @@ app.get("/auth/youtube", requireApiKey, (req, res) => {
       if (urlMatch && codeMatch) {
         codeSent = true;
         send("code", { verification_url: urlMatch[1], user_code: codeMatch[1] });
-        buf = "";
       }
     }
-    // Token kaydedildi — test indirmesi başarılı olsun ya da olmasın işimiz bitti
-    if (buf.includes("Authorization successful")) {
-      send("complete", { message: "OAuth tamamlandı, token kaydedildi." });
-      proc.kill();
-      res.end();
-    }
+    if (buf.includes("Authorization successful")) authDone = true;
   };
 
   proc.stdout.on("data", parse);
   proc.stderr.on("data", parse);
 
-  proc.on("close", (code) => {
+  proc.on("close", () => {
     if (res.writableEnded) return;
-    if (code === 0) {
-      send("complete", { message: codeSent ? "OAuth tamamlandı, token kaydedildi." : "Token zaten geçerli." });
+    if (authDone) {
+      send("complete", { message: "OAuth tamamlandı, token kaydedildi." });
+    } else if (!codeSent) {
+      send("complete", { message: "Token zaten geçerli." });
     } else {
-      send("error", { message: `yt-dlp çıkış kodu: ${code}`, details: buf.trim() });
+      send("error", { message: "Auth tamamlanamadı.", details: buf.trim() });
     }
     res.end();
   });
