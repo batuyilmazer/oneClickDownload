@@ -5,7 +5,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     python3 \
     python3-pip \
-  && pip3 install --break-system-packages "yt-dlp[default]" yt-dlp-youtube-oauth2 \
+  && pip3 install --break-system-packages "yt-dlp[default]" \
+       "yt-dlp-youtube-oauth2 @ git+https://github.com/coletdjnz/yt-dlp-youtube-oauth2.git" \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

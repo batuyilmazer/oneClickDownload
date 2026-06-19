@@ -1,13 +1,12 @@
 import "dotenv/config";
 import express from "express";
 import { randomUUID } from "crypto";
-import { existsSync, createReadStream, unlink } from "fs";
-import { spawn } from "child_process";
-import { mkdirSync } from "fs";
+import { existsSync, createReadStream, unlink, mkdirSync } from "fs";
+import { spawn, execFile } from "child_process";
+import { promisify } from "util";
 import { join } from "path";
 import { tmpdir } from "os";
-import YTDlpWrapModule from "yt-dlp-wrap";
-const YTDlpWrap = YTDlpWrapModule.default ?? YTDlpWrapModule;
+const execFileAsync = promisify(execFile);
 
 // ---------------------------------------------------------------------------
 // Yapılandırma
@@ -18,8 +17,6 @@ const TMP_DIR = join(tmpdir(), "oneclickdownload");
 const YTDLP_BINARY = process.env.YTDLP_BINARY || "yt-dlp";
 
 mkdirSync(TMP_DIR, { recursive: true });
-
-const ytDlp = new YTDlpWrap(YTDLP_BINARY);
 
 // ---------------------------------------------------------------------------
 // Desteklenen platform regex'leri
@@ -99,12 +96,13 @@ app.get("/auth/youtube", requireApiKey, (req, res) => {
   const parse = (chunk) => {
     buf += chunk.toString();
     if (!codeSent) {
-      const urlMatch = buf.match(/https:\/\/www\.google\.com\/device/);
-      const codeMatch = buf.match(/code\s+([A-Z0-9]{4}-[A-Z0-9]{4})/);
+      // Plugin çıktısı: "go to  <url>  and enter code  <code>"
+      const urlMatch = buf.match(/go to\s+(https?:\/\/\S+)\s+and enter/);
+      const codeMatch = buf.match(/enter code\s+(\S+)/);
       if (urlMatch && codeMatch) {
         codeSent = true;
         send("code", {
-          verification_url: "https://www.google.com/device",
+          verification_url: urlMatch[1],
           user_code: codeMatch[1],
         });
         buf = "";
@@ -152,7 +150,7 @@ app.post("/download", requireApiKey, async (req, res) => {
   const outputPath = join(TMP_DIR, `${randomUUID()}.mp4`);
 
   try {
-    await ytDlp.execPromise([url, ...buildArgs(outputPath)]);
+    await execFileAsync(YTDLP_BINARY, [url, ...buildArgs(outputPath)]);
   } catch (err) {
     console.error("yt-dlp hatası:", err.message);
     return res.status(422).json({ error: `İndirme hatası: ${err.message}` });
