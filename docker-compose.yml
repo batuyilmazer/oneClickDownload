@@ -4,11 +4,15 @@ services:
     image: oneclickdownload:latest
     restart: unless-stopped
     env_file: .env
+    environment:
+      - BGUTIL_BASE_URL=http://bgutil:4416
     volumes:
       - /tmp/oneclickdownload:/tmp/oneclickdownload
-      - yt_dlp_cache:/root/.cache/yt-dlp
+    depends_on:
+      - bgutil
     networks:
       - proxy
+      - internal
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.oneclickdownload-http.rule=Host(`${DOMAIN}`)"
@@ -20,9 +24,14 @@ services:
       - "traefik.http.routers.oneclickdownload-https.tls.certresolver=letsencrypt"
       - "traefik.http.services.oneclickdownload.loadbalancer.server.port=3000"
 
+  bgutil:
+    image: ghcr.io/brainicism/bgutil-ytdlp-pot-provider:latest
+    restart: unless-stopped
+    networks:
+      - internal
+
 networks:
   proxy:
     external: true
-
-volumes:
-  yt_dlp_cache:
+  internal:
+    internal: true

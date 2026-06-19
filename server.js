@@ -2,7 +2,7 @@ import "dotenv/config";
 import express from "express";
 import { randomUUID } from "crypto";
 import { existsSync, createReadStream, unlink, mkdirSync } from "fs";
-import { spawn, execFile } from "child_process";
+import { execFile } from "child_process";
 import { promisify } from "util";
 import { join } from "path";
 import { tmpdir } from "os";
@@ -45,9 +45,6 @@ function buildArgs(outputPath) {
     "--quiet",
     "--no-warnings",
     "--socket-timeout", "30",
-    "--username", "oauth2",
-    "--password", "",
-    "--extractor-args", "youtube:player_client=tv",
   ];
 }
 
@@ -69,63 +66,6 @@ function requireApiKey(req, res, next) {
   if (provided !== API_KEY) return res.status(401).json({ error: "Yetkisiz istek." });
   next();
 }
-
-// ---------------------------------------------------------------------------
-// GET /auth/youtube  — tek seferlik OAuth2 akışı (SSE stream)
-// Cihaz kodunu döndürür; kullanıcı https://google.com/device adresine gidip
-// kodu girdikten sonra token /root/.cache/yt-dlp altına kaydedilir ve
-// tüm sonraki indirmelerde otomatik kullanılır.
-// ---------------------------------------------------------------------------
-app.get("/auth/youtube", requireApiKey, (req, res) => {
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-  res.flushHeaders();
-
-  const send = (type, payload = {}) =>
-    res.write(`data: ${JSON.stringify({ type, ...payload })}\n\n`);
-
-  const proc = spawn(YTDLP_BINARY, [
-    "--username", "oauth2",
-    "--password", "",
-    "--simulate",   // indirme yapma — sadece auth akışını tamamla
-    "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-  ]);
-
-  let buf = "";
-  let codeSent = false;
-  let authDone = false;
-
-  const parse = (chunk) => {
-    buf += chunk.toString();
-    if (!codeSent) {
-      const urlMatch = buf.match(/go to\s+(https?:\/\/\S+)\s+and enter/);
-      const codeMatch = buf.match(/enter code\s+(\S+)/);
-      if (urlMatch && codeMatch) {
-        codeSent = true;
-        send("code", { verification_url: urlMatch[1], user_code: codeMatch[1] });
-      }
-    }
-    if (buf.includes("Authorization successful")) authDone = true;
-  };
-
-  proc.stdout.on("data", parse);
-  proc.stderr.on("data", parse);
-
-  proc.on("close", () => {
-    if (res.writableEnded) return;
-    if (authDone) {
-      send("complete", { message: "OAuth tamamlandı, token kaydedildi." });
-    } else if (!codeSent) {
-      send("complete", { message: "Token zaten geçerli." });
-    } else {
-      send("error", { message: "Auth tamamlanamadı.", details: buf.trim() });
-    }
-    res.end();
-  });
-
-  req.on("close", () => { if (!proc.killed) proc.kill(); });
-});
 
 // ---------------------------------------------------------------------------
 // POST /download
